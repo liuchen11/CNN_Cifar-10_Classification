@@ -4,3 +4,5 @@ cifar-10 data downloaded from http://www.cs.toronto.edu/~kriz/cifar.html and sav
 
 simply run the command ``python main.py``
 
+precision rate: 64%
+

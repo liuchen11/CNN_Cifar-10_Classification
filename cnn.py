@@ -8,6 +8,9 @@ from theano.tensor.nnet import conv
 from theano.tensor.nnet import softmax
 from theano.tensor.signal import downsample
 
+def ReLU(x):
+	return theano.tensor.switch(x<0,0,x)
+
 class HiddenLayer(object):
 	def __init__(self,rng,input,n_in,n_out,activation,dropout):
 		'''
@@ -173,7 +176,7 @@ class ConvPool(object):
 			ignore_border=True
 			)
 
-		self.output=T.tanh(pool_out+self.b.dimshuffle('x',0,'x','x'))
+		self.output=ReLU(pool_out+self.b.dimshuffle('x',0,'x','x'))
 		# if dropout==True:
 		# 	shape=self.output.shape
 		# 	self.output=self.output.flatten(1)
@@ -215,6 +218,7 @@ class model(object):
 		self.x=T.dmatrix('x')#inputs
 		self.y=T.lvector('y')#labels
 		self.iter=T.iscalar('iter')#iter_num
+		self.lr=T.dscalar('lr')
 
 		print 'building the model'
 
@@ -225,169 +229,74 @@ class model(object):
 			input=input,
 			shape=[batch_size,3,32,32],
 			filters=[filters[0],3,5,5],
-			pool=[2,2],
+			pool=[1,1],
 			dropout=True
 			)
 
 		self.layer1=ConvPool(
 			rng,
 			input=self.layer0.output,
-			shape=[batch_size,filters[0],14,14],
+			shape=[batch_size,filters[0],28,28],
 			filters=[filters[1],filters[0],5,5],
 			pool=[2,2],
 			dropout=True
 			)
 
-		self.layer2=HiddenLayer(
+		self.layer2=ConvPool(
 			rng,
-			input=self.layer1.output.flatten(2),
-			n_in=filters[1]*5*5,
-			n_out=500,
-			activation=T.tanh,
+			input=self.layer1.output,
+			shape=[batch_size,filters[1],12,12],
+			filters=[filters[2],filters[1],3,3],
+			pool=[1,1],
 			dropout=True
 			)
 
-		self.layer3=LogisticRegression(
+		self.layer3=ConvPool(
+			rng,
 			input=self.layer2.output,
-			n_in=500,
+			shape=[batch_size,filters[2],10,10],
+			filters=[filters[3],filters[2],3,3],
+			pool=[1,1],
+			dropout=True
+			)
+
+		self.layer4=ConvPool(
+			rng,
+			input=self.layer3.output,
+			shape=[batch_size,filters[3],8,8],
+			filters=[filters[4],filters[3],3,3],
+			pool=[1,1],
+			dropout=True
+			)
+
+		self.layer5=HiddenLayer(
+			rng,
+			input=self.layer4.output.flatten(2),
+			n_in=filters[4]*6*6,
+			n_out=250,
+			activation=ReLU,
+			dropout=True
+			)
+
+		self.layer6=LogisticRegression(
+			input=self.layer5.output,
+			n_in=250,
 			n_out=10
 			)
 
-		self.cost=self.layer3.negative_log_likelyhood(self.y)
-		self.error=self.layer3.errors(self.y)
+		self.cost=self.layer6.negative_log_likelyhood(self.y)
+		self.error=self.layer6.errors(self.y)
 
 		self.debug=self.cost
 
-		self.params=self.layer3.param+self.layer2.param+self.layer1.param+self.layer0.param
+		self.params=self.layer6.param+self.layer5.param+self.layer4.param+self.layer3.param+self.layer2.param+self.layer1.param+self.layer0.param
 		self.grads=T.grad(self.cost,self.params)
 
 		self.updates=[
-			(param_i,param_i-self.learn_rate*grad_i*(0.8**(self.iter/3)))
+			(param_i,param_i-self.lr*grad_i)
 			for param_i, grad_i in zip(self.params,self.grads)
 		]
 		print 'construction completed!'
-
-	# def debug_func(self,data_x,data_y):
-	# 	'''
-	# 	>>>debugging function
-	# 	'''
-	# 	print 'begin'
-	# 	assert data_x.shape[0]==data_y.shape[0]
-
-	# 	data_batches=data_y.shape[0]/self.batch_size
-
-	# 	dataX=theano.shared(data_x,borrow=True)
-	# 	dataY=theano.shared(data_y,borrow=True)
-
-	# 	index=T.iscalar('index')
-	# 	debug_model=theano.function(
-	# 		[index],
-	# 		self.debug,
-	# 		updates=self.updates,
-	# 		givens={
-	# 		self.x:dataX[index*self.batch_size:(index+1)*self.batch_size],
-	# 		self.y:dataY[index*self.batch_size:(index+1)*self.batch_size]
-	# 		}
-	# 		)
-
-	# 	print 'debug model established'
-
-	# 	epoch=0
-	# 	max_iter=1000000
-	# 	done_looping=False
-	# 	while (epoch<self.n_epochs) and (not done_looping):
-	# 		epoch+=1
-	# 		for batch_index in xrange(data_batches):
-	# 			iter_num=(epoch-1)*data_batches+batch_index
-	# 			if iter_num%100==0:
-	# 				print 'training@iter=%d/%d' %(iter_num,min(max_iter,self.n_epochs*data_batches))
-
-	# 			current_cost=debug_model(batch_index)
-	# 			# print current_cost
-	# 			if max_iter<=iter_num:
-	# 				done_looping=True
-	# 				break
-
-	# 	print 'debug process complete!'
-
-	# def train(self,train_set_x,train_set_y):
-	# 	'''
-	# 	>>>type train_set_x: T.dmatrix
-	# 	>>>para train_set_x: data of instances of training set
-
-	# 	>>>type train_set_y: T.ivector
-	# 	>>>para train_set_y: labels of instances of training set
-	# 	'''
-	# 	assert train_set_x.shape[0]==train_set_y.shape[0]
-
-	# 	train_set_batches=train_set_y.shape[0]/self.batch_size
-
-	# 	trainX=theano.shared(train_set_x,borrow=True)
-	# 	trainY=theano.shared(train_set_y,borrow=True)
-
-	# 	index=T.iscalar('index')
-	# 	train_model=theano.function(
-	# 		[index],
-	# 		self.cost,
-	# 		updates=self.updates,
-	# 		givens={
-	# 		self.x:trainX[index*self.batch_size:(index+1)*self.batch_size],
-	# 		self.y:trainY[index*self.batch_size:(index+1)*self.batch_size]
-	# 		}
-	# 		)
-
-	# 	print 'training model established'
-
-	# 	epoch=0
-	# 	max_iter=1000000
-	# 	done_looping=False
-	# 	while (epoch<self.n_epochs) and (not done_looping):
-	# 		epoch+=1
-	# 		for batch_index in xrange(train_set_batches):
-	# 			iter_num=(epoch-1)*train_set_batches+batch_index
-	# 			if iter_num%100==0:
-	# 				print 'training@iter=%d/%d' %(iter_num,min(max_iter,self.n_epochs*train_set_batches))
-
-	# 			current_cost=train_model(batch_index)
-	# 			if max_iter<=iter_num:
-	# 				done_looping=True
-	# 				break
-
-	# 	print 'training process complete!'
-
-	# def test(self,test_set_x,test_set_y):
-	# 	'''		
-	# 	>>>type test_set_x: T.dmatrix
-	# 	>>>para test_set_x: data of instances of testing set
-
-	# 	>>>type test_set_y: T.ivector
-	# 	>>>para test_set_y: labels of instances of testing set
-	# 	'''
-	# 	assert test_set_x.shape[0]==test_set_y.shape[0]
-	# 	testX=theano.shared(test_set_x,borrow=True)
-	# 	testY=theano.shared(test_set_y,borrow=True)
-
-	# 	test_set_batches=test_set_y.shape[0]/self.batch_size
-
-	# 	index=T.iscalar('index')
-	# 	test_model=theano.function(
-	# 		[index],
-	# 		self.error,
-	# 		givens={
-	# 		self.x: testX[index*self.batch_size:(index+1)*self.batch_size],
-	# 		self.y: testY[index*self.batch_size:(index+1)*self.batch_size]
-	# 		}
-	# 		)
-
-	# 	print 'test model established!'
-
-	# 	test_errors=[
-	# 	test_model(i)
-	# 	for i in xrange(test_set_batches)
-	# 	]
-	# 	test_score=1.0-np.mean(test_errors)
-
-	# 	print 'test accuracy: %f'%test_score
 
 	def train_validate_test(self,train_set_x,train_set_y,validate_set_x,validate_set_y,test_set_x,test_set_y):
 		'''
@@ -415,16 +324,17 @@ class model(object):
 		test_set_batches=test_set_y.shape[0]/self.batch_size
 
 		index=T.iscalar('index')
+		l_r=T.dscalar('lr')
 		epoch_num=T.iscalar('epoch_num')
 
 		train_model=theano.function(
-			[index, epoch_num],
+			[index,l_r],
 			self.cost,
 			updates=self.updates,
 			givens={
 			self.x:trainX[index*self.batch_size:(index+1)*self.batch_size],
 			self.y:trainY[index*self.batch_size:(index+1)*self.batch_size],
-			self.iter:epoch_num
+			self.lr:l_r
 			}
 			)
 		validate_model=theano.function(
@@ -439,8 +349,16 @@ class model(object):
 			[index],
 			1.0-self.error,
 			givens={
-			self.x: testX[index*self.batch_size:(index+1)*self.batch_size],
-			self.y: testY[index*self.batch_size:(index+1)*self.batch_size]
+			self.x:testX[index*self.batch_size:(index+1)*self.batch_size],
+			self.y:testY[index*self.batch_size:(index+1)*self.batch_size]
+			}
+			)
+		test_train=theano.function(
+			[index],
+			1.0-self.error,
+			givens={
+			self.x:trainX[index*self.batch_size:(index+1)*self.batch_size],
+			self.y:trainY[index*self.batch_size:(index+1)*self.batch_size]
 			}
 			)
 
@@ -456,14 +374,25 @@ class model(object):
 		epoch=0
 		done_looping=False
 
+		rate=self.learn_rate
+
 		while (epoch<self.n_epochs) and (not done_looping):
 			epoch+=1
+			rate=(10-(epoch-1)/2)/10*self.learn_rate
+
 			for batch_index in xrange(train_set_batches):
 				iter_num=(epoch-1)*train_set_batches+batch_index
 				#print self.layer0.w.get_value()[0,0,0,0]
 				if iter_num%100==0:
 					print 'training@iter=%d/%d'%(iter_num,train_set_batches*self.n_epochs)
-				cost_now=train_model(batch_index,epoch)
+#					train_test_losses=[
+#					test_train(i)
+#					for i in xrange(train_set_batches)
+#					]
+#					train_test_mean=np.mean(train_test_losses)
+#					print 'train accuracy %f %%'%train_test_mean
+				
+				cost_now=train_model(batch_index,self.learn_rate)
 
 				if (iter_num+1)%validate_fre==0:
 					validation_losses=[
@@ -471,7 +400,7 @@ class model(object):
 					for i in xrange(validate_set_batches)
 					]
 					validation_loss_mean=np.mean(validation_losses)
-					print 'epoch %i, batch_index%i/%i, validation accuracy %f %%'%(epoch,batch_index+1,train_set_batches,(1.0-validation_loss_mean)*100.)
+					print 'epoch %i, batch_index %i/%i, validation accuracy %f %%'%(epoch,batch_index+1,train_set_batches,(1.0-validation_loss_mean)*100.)
 					if validation_loss_mean<best_validation_loss:
 						if validation_loss_mean<best_validation_loss*improvement_threshold:
 							max_iter=max(max_iter,iter_num*max_iter_increase)
@@ -484,7 +413,7 @@ class model(object):
 						for i in xrange(test_set_batches)
 						]
 						test_score_mean=np.mean(test_scores)
-						print 'epoch %i, batch_index %i/%i, test accuracy %f %%'%(epoch,batch_index+1,train_set_batches,test_score_mean*100.)
+						print '\nepoch %i, batch_index %i/%i, test accuracy %f %%'%(epoch,batch_index+1,train_set_batches,test_score_mean*100.)
 
 				if iter_num>=max_iter:
 					done_looping=True

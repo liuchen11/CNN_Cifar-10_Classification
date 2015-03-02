@@ -21,9 +21,9 @@ if __name__=='__main__':
 	test_label=np.asarray(test['labels'],dtype=theano.config.floatX)
 
 	machine=model(
-		learn_rate=0.5,
+		learn_rate=0.005,
 		n_epochs=100,
-		filters=[32,32,64],
+		filters=[64,128,128,128,64],
 		batch_size=25
 		)
 
