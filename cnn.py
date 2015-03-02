@@ -20,7 +20,7 @@ def Dropout_Func(rng,value,p):
 	>>>type value: theano.tensor.TensorType
 	>>>para value: input data
 
-	>>>type p: double
+	>>>type p: float
 	>>>para p: dropout rate
 	'''
 	srng=shared_randomstreams.RandomStreams(rng.randint(2011010539))
@@ -87,7 +87,7 @@ class DropoutHiddenLayer(HiddenLayer):
 		'''
 		>>>rng,input,n_in,n_out,activation is the same as above
 		'''
-		super(rng=rng,input=input,n_in=n_in,n_out=n_out,activation=activation,dropout=True)
+		HiddenLayer.__init__(self,rng=rng,input=input,n_in=n_in,n_out=n_out,activation=activation,dropout=True)
 		self.output=Dropout_Func(rng=rng,value=self.output,p=dropout_rate)
 
 class LogisticRegression(object):
@@ -216,7 +216,7 @@ class ConvPool(object):
 
 class DropoutConvPool(ConvPool):
 	def __init__(self,rng,input,shape,filters,pool,dropout_rate):
-		super(rng=rng,input=input,shape=shape,filters=filters,pool=pool,dropout=True)
+		ConvPool.__init__(self,rng=rng,input=input,shape=shape,filters=filters,pool=pool,dropout=True)
 		self.output=Dropout_Func(rng=rng,value=self.output,p=dropout_rate)
 
 class model(object):
@@ -251,58 +251,58 @@ class model(object):
 
 		input=self.x.reshape((batch_size,3,32,32))
 
-		self.layer0=ConvPool(
+		self.layer0=DropoutConvPool(
 			rng,
 			input=input,
 			shape=[batch_size,3,32,32],
 			filters=[filters[0],3,5,5],
 			pool=[1,1],
-			dropout=True
+			dropout_rate=0.5
 			)
 
-		self.layer1=ConvPool(
+		self.layer1=DropoutConvPool(
 			rng,
 			input=self.layer0.output,
 			shape=[batch_size,filters[0],28,28],
 			filters=[filters[1],filters[0],5,5],
 			pool=[2,2],
-			dropout=True
+			dropout_rate=0.5
 			)
 
-		self.layer2=ConvPool(
+		self.layer2=DropoutConvPool(
 			rng,
 			input=self.layer1.output,
 			shape=[batch_size,filters[1],12,12],
 			filters=[filters[2],filters[1],3,3],
 			pool=[1,1],
-			dropout=True
+			dropout_rate=0.5
 			)
 
-		self.layer3=ConvPool(
+		self.layer3=DropoutConvPool(
 			rng,
 			input=self.layer2.output,
 			shape=[batch_size,filters[2],10,10],
 			filters=[filters[3],filters[2],3,3],
 			pool=[1,1],
-			dropout=True
+			dropout_rate=0.5
 			)
 
-		self.layer4=ConvPool(
+		self.layer4=DropoutConvPool(
 			rng,
 			input=self.layer3.output,
 			shape=[batch_size,filters[3],8,8],
 			filters=[filters[4],filters[3],3,3],
 			pool=[1,1],
-			dropout=True
+			dropout_rate=0.5
 			)
 
-		self.layer5=HiddenLayer(
+		self.layer5=DropoutHiddenLayer(
 			rng,
 			input=self.layer4.output.flatten(2),
 			n_in=filters[4]*6*6,
 			n_out=250,
 			activation=ReLU,
-			dropout=True
+			dropout_rate=0.5
 			)
 
 		self.layer6=LogisticRegression(
