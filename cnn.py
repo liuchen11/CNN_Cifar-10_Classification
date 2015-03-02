@@ -7,9 +7,25 @@ import theano.tensor as T
 from theano.tensor.nnet import conv
 from theano.tensor.nnet import softmax
 from theano.tensor.signal import downsample
+from theano.tensor import shared_randomstreams
 
 def ReLU(x):
 	return theano.tensor.switch(x<0,0,x)
+
+def Dropout_Func(rng,value,p):
+	'''
+	>>>type rng: numpy.random.RandomState
+	>>>para rng: initalize weight randomly
+
+	>>>type value: theano.tensor.TensorType
+	>>>para value: input data
+
+	>>>type p: double
+	>>>para p: dropout rate
+	'''
+	srng=shared_randomstreams.RandomStreams(rng.randint(2011010539))
+	mask=srng.binomial(n=1,p=1-p,size=value.shape)
+	return value*T.cast(mask,theano.config.floatX)
 
 class HiddenLayer(object):
 	def __init__(self,rng,input,n_in,n_out,activation,dropout):
@@ -65,6 +81,14 @@ class HiddenLayer(object):
 		# 			self.output[i]=0
 
 		self.param=[self.w,self.b]
+
+class DropoutHiddenLayer(HiddenLayer):
+	def __init__(self,rng,input,n_in,n_out,activation,dropout_rate):
+		'''
+		>>>rng,input,n_in,n_out,activation is the same as above
+		'''
+		super(rng=rng,input=input,n_in=n_in,n_out=n_out,activation=activation,dropout=True)
+		self.output=Dropout_Func(rng=rng,value=self.output,p=dropout_rate)
 
 class LogisticRegression(object):
 
@@ -190,7 +214,10 @@ class ConvPool(object):
 		# 	self.output=self.output.reshape(shape)
 		self.param=[self.w,self.b]
 
-
+class DropoutConvPool(ConvPool):
+	def __init__(self,rng,input,shape,filters,pool,dropout_rate):
+		super(rng=rng,input=input,shape=shape,filters=filters,pool=pool,dropout=True)
+		self.output=Dropout_Func(rng=rng,value=self.output,p=dropout_rate)
 
 class model(object):
 
