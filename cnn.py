@@ -242,10 +242,10 @@ class model(object):
 		self.batch_size=batch_size
 		self.filters=filters
 
-		self.x=T.dmatrix('x')#inputs
-		self.y=T.lvector('y')#labels
-		self.iter=T.iscalar('iter')#iter_num
-		self.lr=T.dscalar('lr')
+		self.x=T.dmatrix('x')		#inputs
+		self.y=T.lvector('y')		#labels
+		self.iter=T.iscalar('iter')	#iter_num
+		self.lr=T.dscalar('lr')		#learning rate
 
 		print 'building the model'
 
@@ -257,7 +257,7 @@ class model(object):
 			shape=[batch_size,3,32,32],
 			filters=[filters[0],3,5,5],
 			pool=[1,1],
-			dropout_rate=0.5
+			dropout_rate=0
 			)
 
 		self.layer1=DropoutConvPool(
@@ -266,7 +266,7 @@ class model(object):
 			shape=[batch_size,filters[0],28,28],
 			filters=[filters[1],filters[0],5,5],
 			pool=[2,2],
-			dropout_rate=0.5
+			dropout_rate=0
 			)
 
 		self.layer2=DropoutConvPool(
@@ -275,7 +275,7 @@ class model(object):
 			shape=[batch_size,filters[1],12,12],
 			filters=[filters[2],filters[1],3,3],
 			pool=[1,1],
-			dropout_rate=0.5
+			dropout_rate=0
 			)
 
 		self.layer3=DropoutConvPool(
@@ -284,7 +284,7 @@ class model(object):
 			shape=[batch_size,filters[2],10,10],
 			filters=[filters[3],filters[2],3,3],
 			pool=[1,1],
-			dropout_rate=0.5
+			dropout_rate=0
 			)
 
 		self.layer4=DropoutConvPool(
@@ -293,7 +293,7 @@ class model(object):
 			shape=[batch_size,filters[3],8,8],
 			filters=[filters[4],filters[3],3,3],
 			pool=[1,1],
-			dropout_rate=0.5
+			dropout_rate=0
 			)
 
 		self.layer5=DropoutHiddenLayer(
@@ -302,7 +302,7 @@ class model(object):
 			n_in=filters[4]*6*6,
 			n_out=250,
 			activation=ReLU,
-			dropout_rate=0.5
+			dropout_rate=0
 			)
 
 		self.layer6=LogisticRegression(
