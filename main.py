@@ -23,7 +23,7 @@ if __name__=='__main__':
 	machine=model(
 		learn_rate=0.005,
 		n_epochs=100,
-		filters=[64,128,128,128,64],
+		filters=[128,128,128,256,256],
 		batch_size=25
 		)
 
