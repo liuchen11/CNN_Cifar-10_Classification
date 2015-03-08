@@ -402,10 +402,21 @@ class model(object):
 		done_looping=False
 
 		rate=self.learn_rate
-		stop_optimal=0
+		min_error=1.0
+		present_error=1.0
 
 		while (epoch<self.n_epochs) and (not done_looping):
 			epoch+=1
+			if present_error>0.5:
+				rate=0.01
+			elif present_error>0.35:
+				rate=0.005
+			elif present_error>0.3:
+				rate=0.003
+			elif present_error>0.25:
+				rate=0.002
+			else:
+				rate=0.001
 
 			for batch_index in xrange(train_set_batches):
 				iter_num=(epoch-1)*train_set_batches+batch_index
@@ -428,6 +439,8 @@ class model(object):
 					]
 					validation_loss_mean=np.mean(validation_losses)
 					print 'epoch %i, batch_index %i/%i, validation accuracy %f %%'%(epoch,batch_index+1,train_set_batches,(1.0-validation_loss_mean)*100.)
+					print 'best result:%f %%'%((1.0-min_error)*100)
+
 					if validation_loss_mean<best_validation_loss:
 						if validation_loss_mean<best_validation_loss*improvement_threshold:
 							max_iter=max(max_iter,iter_num*max_iter_increase)
@@ -442,11 +455,11 @@ class model(object):
 						]
 						test_score_mean=np.mean(test_scores)
 						print '\nepoch %i, batch_index %i/%i, test accuracy %f %%'%(epoch,batch_index+1,train_set_batches,test_score_mean*100.)
-					else:
-						stop_optimal+=1
-						if stop_optimal==3:
-							rate/=4
-							stop_optimal=0
+
+						present_error=1-test_score_mean
+						if present_error<min_error:
+							min_error=present_error
+						
 
 				if iter_num>=max_iter:
 					done_looping=True
