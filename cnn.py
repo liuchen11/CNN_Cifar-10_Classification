@@ -255,7 +255,7 @@ class model(object):
 			rng,
 			input=input,
 			shape=[batch_size,3,32,32],
-			filters=[filters[0],3,5,5],
+			filters=[filters[0],3,3,3],
 			pool=[1,1],
 			dropout_rate=0
 			)
@@ -263,8 +263,8 @@ class model(object):
 		self.layer1=DropoutConvPool(
 			rng,
 			input=self.layer0.output,
-			shape=[batch_size,filters[0],28,28],
-			filters=[filters[1],filters[0],5,5],
+			shape=[batch_size,filters[0],30,30],
+			filters=[filters[1],filters[0],3,3],
 			pool=[2,2],
 			dropout_rate=0
 			)
@@ -272,8 +272,8 @@ class model(object):
 		self.layer2=DropoutConvPool(
 			rng,
 			input=self.layer1.output,
-			shape=[batch_size,filters[1],12,12],
-			filters=[filters[2],filters[1],3,3],
+			shape=[batch_size,filters[1],14,14],
+			filters=[filters[2],filters[1],5,5],
 			pool=[1,1],
 			dropout_rate=0
 			)
@@ -282,32 +282,32 @@ class model(object):
 			rng,
 			input=self.layer2.output,
 			shape=[batch_size,filters[2],10,10],
-			filters=[filters[3],filters[2],3,3],
-			pool=[1,1],
+			filters=[filters[3],filters[2],5,5],
+			pool=[2,2],
 			dropout_rate=0
 			)
 
-		self.layer4=DropoutConvPool(
+		self.layer4=DropoutHiddenLayer(
 			rng,
-			input=self.layer3.output,
-			shape=[batch_size,filters[3],8,8],
-			filters=[filters[4],filters[3],3,3],
-			pool=[1,1],
+			input=self.layer3.output.flatten(2),
+			n_in=filters[3]*3*3,
+			n_out=400,
+			activation=ReLU,
 			dropout_rate=0
 			)
 
 		self.layer5=DropoutHiddenLayer(
 			rng,
-			input=self.layer4.output.flatten(2),
-			n_in=filters[4]*6*6,
-			n_out=250,
-			activation=ReLU,
+			input=self.layer4.output,
+			n_in=400,
+			n_out=100,
+			activation=T.tanh,
 			dropout_rate=0
 			)
 
 		self.layer6=LogisticRegression(
 			input=self.layer5.output,
-			n_in=250,
+			n_in=100,
 			n_out=10
 			)
 
