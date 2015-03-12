@@ -1,8 +1,8 @@
-this is a cnn-based deep neuron network classication project on the image dataset cifar-10
+This is a cnn-based deep neural network classifier project on the image dataset cifar-10
 
-cifar-10 data downloaded from http://www.cs.toronto.edu/~kriz/cifar.html and saved in the folder ../data
+Cifar-10 data is downloaded from http://www.cs.toronto.edu/~kriz/cifar.html and should be saved in the folder ../data
 
-simply run the command ``python main.py``
+Simply run the command ``python main.py``
 
-precision rate: 73%
+Best precision rate: 74.0%
 
